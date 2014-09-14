@@ -24,6 +24,7 @@ time_unit = 1;
 capacity = double(0);
 error_count = 0;
 warning_count = 0;
+warning_count_old = 0;
 serial_port = serial(SERIAL_DEVICE, SERIAL_BAUDRATE, SERIAL_TIMEOUT);
 
 % Initial values
@@ -125,9 +126,10 @@ while (true)
 	fflush(stdout);
 
 	% Don't break on suspicious values
-	if (voltage(time_unit) < 3)
+	if ((warning_count == warning_count_old) && (voltage(time_unit) < 3))
 		break;
 	else
+		warning_count_old = warning_count;
 		time_unit++;
 	end
 end
