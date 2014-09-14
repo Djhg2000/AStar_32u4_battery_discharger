@@ -2,7 +2,7 @@ This project aims to make battery discharger circuits easily available for every
 
 Warning: the battery voltage must be less than the AREF (typically the same as the regular I/O voltage) of the Arduino board. Please check if your board is safe for 5V input. If you have a 3.3V only board you may not be able to test LiPo batteries.
 
-The hardware part is pretty simple. It only requires 4 external parts except for wires, the battery itself and the Arduino (the code is designed for and tested on a cheaper pin-compatible Leonardo-like board called the A-Star 32u4 Micro). Of these 4 parts, 3 of them are 100 Ohm resistors, which will provide the battery load, and the last one is an N-channel MOSFET for controlling the battery connection.
+The hardware part is pretty simple. It only requires 4 external parts except for wires, the battery itself and the Arduino (the code is designed for and tested on a cheaper mostly pin-compatible Leonardo-like board called the A-Star 32u4 Micro). Of these 4 parts, 3 of them are 100 Ohm resistors, which will provide the battery load, and the last one is an N-channel MOSFET for controlling the battery connection.
 
 The Arduino code handles the actual measurements and is extremely simple. All it does is just dumping the raw ADC output as a formatted string over the serial line.
 

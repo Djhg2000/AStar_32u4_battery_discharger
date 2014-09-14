@@ -1,6 +1,6 @@
 // Pins
-#define RESISTOR_NEGATIVE 10
-#define RESISTOR_POSITIVE 11
+#define RESISTOR_NEGATIVE 0  // A-Star 32u4 ADC pinout does not
+#define RESISTOR_POSITIVE 1  // match what's printed on the board
 #define MOSFET_GATE 12
 #define INTERVAL 1000
 
