@@ -6,6 +6,8 @@ pkg load instrument-control
 % Defines
 SERIAL_BAUDRATE = 9600;
 SERIAL_TIMEOUT = -1;
+PRETTY_OUTPUT = false;
+
 
 
 % Arduino board voltage
@@ -96,10 +98,9 @@ while (true)
 			voltage(time_unit) = v_cc;
 			fwrite(stdout, ["       Value replaced with Vcc value ", num2str(voltage(time_unit)), "V\n"]);
 		end
-		fflush(stdout);
 	elseif ((time_unit > 1) && ((voltage(time_unit) > (voltage(time_unit - 1) + 0.1)) || (voltage(time_unit) < (voltage(time_unit - 1) - 0.1))))
 		warning_count++;
-		fwrite(stdout, ["Warning: suspicious input for iteration ", num2str(time_unit), " at ", num2str(voltage(time_unit)), "V\n"]);
+		fwrite(stdout, ["Warning: Suspicious input for iteration ", num2str(time_unit), " at ", num2str(voltage(time_unit)), "V\n"]);
 	end
 
 	% Calculate current from the voltage drop
@@ -115,9 +116,15 @@ while (true)
 	%refresh(handle_figure);
 	%drawnow();
 
-	fwrite(stdout, ["Voltage: ", num2str(voltage(time_unit), "%1.4f"), "V, Current: ", num2str(current(time_unit)*1000, "%5f") "mA, Capacity: ", num2str(capacity), "mAh\n"]);
+	fwrite(stdout, ["Voltage: ", num2str(voltage(time_unit), "%1.4f"), "V, Current: ", num2str(current(time_unit)*1000, "%5f") "mA, Capacity: ", num2str(capacity), "mAh"]);
+	if (PRETTY_OUTPUT)
+		fwrite(stdout, ["    \r"]);
+	else
+		fwrite(stdout, ["\n"]);
+	end
 	fflush(stdout);
 
+	% Don't break on suspicious values
 	if (voltage(time_unit) < 3)
 		break;
 	else
@@ -168,6 +175,7 @@ fwrite(stdout, ["Duration:      ", num2str(time_actual), " seconds\n\n"]);
 fwrite(stdout, ["Clock drift:   ", num2str(time_unit_size - 1), " actual seconds per clock second\n"]);
 fwrite(stdout, ["Error count:   ", num2str(error_count), " serial errors\n"]);
 fwrite(stdout, ["Warning count: ", num2str(warning_count), " ADC warnings\n"]);
+fwrite(stdout, ["Reliability:   ", num2str(((time_unit - (warning_count + error_count)) / time_unit) * 100), " %\n"]);
 
 plot(1:time_unit, voltage);
 
