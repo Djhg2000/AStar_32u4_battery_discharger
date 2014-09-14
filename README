@@ -1,0 +1,14 @@
+This project aims to make battery discharger circuits easily available for everyone. It has many safety mechanisms and tries the best it can to automatically calibrate the readings (this is done after the discharge stage, the real time data may not be accurate but it allows you to detect errors early on). The project consists of 3 main parts; the hardware, the Arduino code and the Octave(/MATLAB) code.
+
+Warning: the battery voltage must be less than the AREF (typically the same as the regular I/O voltage) of the Arduino board. Please check if your board is safe for 5V input. If you have a 3.3V only board you may not be able to test LiPo batteries.
+
+The hardware part is pretty simple. It only requires 4 external parts except for wires, the battery itself and the Arduino (the code is designed for and tested on a cheaper pin-compatible Leonardo-like board called the A-Star 32u4 Micro). Of these 4 parts, 3 of them are 100 Ohm resistors, which will provide the battery load, and the last one is an N-channel MOSFET for controlling the battery connection.
+
+The Arduino code handles the actual measurements and is extremely simple. All it does is just dumping the raw ADC output as a formatted string over the serial line.
+
+Now for the Octave part. Octave is an open source MATLAB reimplementation and as such it differs a little, but from my experience porting code between them is just a few minutes worth of searching the internet for any error that comes up. It also requires the Octave-Forge package called "instrument-control" (http://octave.sourceforge.net/instrument-control/). To install it, run "pkg install instrument-control" as root and Octave will handle the rest.
+
+There are a few things you'll need to tell the code in order to get accurate readings; the voltage on the Arduino board (only 5V boards are currently supported), the resistance to be applied across the battery and finally the cutoff voltage (when to cut power from the battery, 3V is generally considered safe for LiPo cells). Everything hase sane defaults for LiPo batteries but the resistive load will need to either be measured out by a multimeter or, if that for whatever reason isn't an option, read from resistor markings (the resistance indicated on the resistors will probably be close enough). Those values are all defined at the top of the AStar_32u4_battery_discharger.m file.
+
+To run the Octave code, launch an Octave interpreter in this directory and run "AStar_32u4_battery_discharger <serial device>", for example if your Arduino is connected at /dev/ttyACM0 then you should run "AStar_32u4_battery_discharger /dev/ttyACM0". It will then tell you to connect the battery in case you haven't already and you're given a chance to review the parameters before starting the test. When the test is complete it will give you a summary of the results.
+
