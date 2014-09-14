@@ -1,7 +1,7 @@
 // Pins
-#define RESISTOR_NEGATIVE 0
-#define RESISTOR_POSITIVE 1
-#define MOSFET_GATE 10
+#define RESISTOR_NEGATIVE 10
+#define RESISTOR_POSITIVE 11
+#define MOSFET_GATE 12
 #define INTERVAL 1000
 
 // Variables

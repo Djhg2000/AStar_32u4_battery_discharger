@@ -8,9 +8,9 @@ SERIAL_BAUDRATE = 9600;
 SERIAL_TIMEOUT = -1;
 
 
-% Vcc voltage
+% Arduino board voltage
 v_cc = 4.98;
-% Battery load in Ohms
+% Resistive load in Ohms
 resistance = 1/((1/99.7) + (1/99.7) + (1/99.4));
 % Battery cutoff voltage
 v_cutoff = 3;
