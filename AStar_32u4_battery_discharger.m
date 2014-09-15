@@ -6,6 +6,7 @@ pkg load instrument-control
 % Defines
 SERIAL_BAUDRATE = 9600;
 SERIAL_TIMEOUT = -1;
+ADC_BITS = 10;
 PRETTY_OUTPUT = false;
 
 
@@ -25,6 +26,7 @@ capacity = double(0);
 error_count = 0;
 warning_count = 0;
 warning_count_old = 0;
+warning_vector = [];
 serial_port = serial(SERIAL_DEVICE, SERIAL_BAUDRATE, SERIAL_TIMEOUT);
 
 % Initial values
@@ -33,7 +35,7 @@ serial_port = serial(SERIAL_DEVICE, SERIAL_BAUDRATE, SERIAL_TIMEOUT);
 fwrite(stdout, ["Detecting battery...\n"]);
 fflush(stdout);
 set_mosfet(serial_port, '+');
-voltage = get_voltage(serial_port, v_cc);
+voltage = get_voltage(serial_port, v_cc, ADC_BITS);
 set_mosfet(serial_port, '-');
 
 % Set up the plot and handles
@@ -54,10 +56,10 @@ if ((voltage <= (v_cutoff + 0.1)) || (voltage > 4.5))
 	%serial_line = srl_fgetl_firstchar(serial_port, 'N');
 	%positive_raw = (serial_line(7) - '0')*1000 + (serial_line(8) - '0')*100 + (serial_line(9) - '0')*10 + (serial_line(10) - '0');
 	set_mosfet(serial_port, '+');
-	voltage = get_voltage(serial_port, v_cc);
+	voltage = get_voltage(serial_port, v_cc, ADC_BITS);
 	set_mosfet(serial_port, '+');
 end
-fwrite(stdout, ["Battery detected.\n"]);
+fwrite(stdout, ["Battery detected at ", num2str(voltage), "V.\n"]);
 fwrite(stdout, ["Press any key to start: "]);
 fflush(stdout);
 kbhit();
@@ -71,7 +73,7 @@ if (set_mosfet(serial_port, '+') ~= 0)
 end
 
 % Wait for voltages to settle
-while (get_voltage(serial_port, v_cc) < 0.5) end
+while (get_voltage(serial_port, v_cc, ADC_BITS) < 0.5) end
 
 timer = tic();
 
@@ -86,7 +88,7 @@ while (true)
 	%positive_raw = (serial_line(7) - '0')*1000 + (serial_line(8) - '0')*100 + (serial_line(9) - '0')*10 + (serial_line(10) - '0')
 
 	% Calculate voltage levels from the ADC values (10-bit ADC), save the values from the positive lead for plotting
-	voltage(time_unit) = get_voltage(serial_port, v_cc);
+	voltage(time_unit) = get_voltage(serial_port, v_cc, ADC_BITS);
 
 	% Sanity checks
 	if ((voltage(time_unit) > v_cc) || (voltage(time_unit) < 0))
@@ -101,6 +103,7 @@ while (true)
 		end
 	elseif ((time_unit > 1) && ((voltage(time_unit) > (voltage(time_unit - 1) + 0.1)) || (voltage(time_unit) < (voltage(time_unit - 1) - 0.1))))
 		warning_count++;
+		warning_vector = [warning_vector, time_unit];
 		fwrite(stdout, ["Warning: Suspicious input for iteration ", num2str(time_unit), " at ", num2str(voltage(time_unit)), "V\n"]);
 	end
 
@@ -177,9 +180,21 @@ fwrite(stdout, ["Duration:      ", num2str(time_actual), " seconds\n\n"]);
 fwrite(stdout, ["Clock drift:   ", num2str(time_unit_size - 1), " actual seconds per clock second\n"]);
 fwrite(stdout, ["Error count:   ", num2str(error_count), " serial errors\n"]);
 fwrite(stdout, ["Warning count: ", num2str(warning_count), " ADC warnings\n"]);
-fwrite(stdout, ["Reliability:   ", num2str(((time_unit - (warning_count + error_count)) / time_unit) * 100), " %\n"]);
+fwrite(stdout, ["Reliability:   ", num2str(((time_unit - (warning_count + error_count)) / time_unit) * 100), " %\n\n"]);
 
-plot(1:time_unit, voltage);
+clf();
+hold on;
+
+% Plot discharge voltage over time curve
+plot(1:time_unit, voltage, "b-");
+
+% Plot various overlays
+% Circle suspicious values in red
+plot(warning_vector, voltage(warning_vector), "ro");
+% Add a black cross to the last value
+plot(time_unit, voltage(time_unit), "k+");
+
+hold off;
 
 filename = ["run-", date()];
 fwrite(stdout, ["Saving data to file...\n"]);
@@ -215,6 +230,7 @@ function srl_fgetl_line = srl_fgetl_firstchar(srl_fgetl_device, srl_fgetl_firstc
 
 	srl_fgetl_line = srl_fgetl_firstchar;
 	while ((srl_fgetl_char = char(srl_read(srl_fgetl_device, 1))) ~= srl_fgetl_firstchar)
+		% Debug output, can safely be silenced by commenting out fwrite() below
 		% Don't fflush() in here, we don't want to risk missing a byte
 		fwrite(stdout, ["srl_fgetl_firstchar(): wanted \"", srl_fgetl_firstchar, "\" got \"", srl_fgetl_char, "\"\n"]);
 	end
@@ -224,8 +240,11 @@ function srl_fgetl_line = srl_fgetl_firstchar(srl_fgetl_device, srl_fgetl_firstc
 	end
 end
 
-function get_voltage_voltage = get_voltage(get_voltage_device, get_voltage_v_cc)
+function get_voltage_voltage = get_voltage(get_voltage_device, get_voltage_v_cc, get_voltage_adc_bits)
 
+	% This function expects the Arduino to return a newline terminated string in the format "N0000P0000" where
+	% N marks the negative ADC and four nummeric characters follow
+	% P marks the positive ADC and four nummeric characters follow
 	get_voltage_serial_line = srl_fgetl_firstchar(get_voltage_device, 'N');
 	save("-append", "-binary", ["raw_serial-", date(), ".txt"], "get_voltage_serial_line");
 
@@ -234,7 +253,7 @@ function get_voltage_voltage = get_voltage(get_voltage_device, get_voltage_v_cc)
 	get_voltage_positive_raw = (get_voltage_serial_line(7) - '0')*1000 + (get_voltage_serial_line(8) - '0')*100 + (get_voltage_serial_line(9) - '0')*10 + (get_voltage_serial_line(10) - '0');
 
 	% Scale to real voltage value
-	get_voltage_voltage = (get_voltage_positive_raw - get_voltage_negative_raw)*get_voltage_v_cc/2^10;
+	get_voltage_voltage = (get_voltage_positive_raw - get_voltage_negative_raw)*get_voltage_v_cc/(2^get_voltage_adc_bits);
 end
 
 function set_mosfet_error = set_mosfet(set_mosfet_device, set_mosfet_state)
