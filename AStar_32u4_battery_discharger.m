@@ -73,7 +73,7 @@ if (set_mosfet(serial_port, '+') ~= 0)
 end
 
 % Wait for voltages to settle
-while (get_voltage(serial_port, v_cc, ADC_BITS) < 0.5) end
+while (get_voltage(serial_port, v_cc, ADC_BITS) < v_cutoff) end
 
 timer = tic();
 
@@ -139,12 +139,19 @@ end
 
 time_actual = toc(timer);
 
-fwrite(stdout, ["\nDischarge complete, disconnecting battery...\n"]);
+fwrite(stdout, ["\nDischarge complete, attempting to disconnect battery...\n"]);
 fflush(stdout);
 % Send MOSFET disable character and verify transmission
 if (set_mosfet(serial_port, '-') ~= 0)
-	fwrite(stdout, ["Error: writing to ", SERIAL_DEVICE, " failed!\n\n"]);
-	fwrite(stdout, ["          / \\\n"]);
+	fwrite(stdout, ["Error: writing to ", SERIAL_DEVICE, " failed!\n"]);
+end
+
+fwrite(stdout, ["Verifying battery state...\n"]);
+% Wait for voltages to settle
+get_voltage(serial_port, v_cc, ADC_BITS);
+
+if (get_voltage(serial_port, v_cc, ADC_BITS) > 0.1)
+	fwrite(stdout, ["\n          / \\\n"]);
 	fwrite(stdout, ["         /   \\\n"]);
 	fwrite(stdout, ["        / ||| \\\n"]);
 	fwrite(stdout, ["       /  |||  \\\n"]);
