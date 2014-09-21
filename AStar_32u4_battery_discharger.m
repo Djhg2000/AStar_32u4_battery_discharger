@@ -57,23 +57,32 @@ if ((voltage <= (v_cutoff + 0.1)) || (voltage > 4.5))
 	%positive_raw = (serial_line(7) - '0')*1000 + (serial_line(8) - '0')*100 + (serial_line(9) - '0')*10 + (serial_line(10) - '0');
 	set_mosfet(serial_port, '+');
 	voltage = get_voltage(serial_port, v_cc, ADC_BITS);
-	set_mosfet(serial_port, '+');
+	set_mosfet(serial_port, '-');
 end
+
 fwrite(stdout, ["Battery detected at ", num2str(voltage), "V.\n"]);
-fwrite(stdout, ["Press any key to start: "]);
-fflush(stdout);
-kbhit();
-fwrite(stdout, ["\n"]);
 
-% Send MOSFET enable character and verify transmission
-if (set_mosfet(serial_port, '+') ~= 0)
-	fwrite(stdout, ["Fatal error: writing to ", SERIAL_DEVICE, " failed, will now exit!\n"]);
+if (get_voltage(serial_port, v_cc, ADC_BITS) > v_cutoff)
+	fwrite(stdout, ["/!\\ Failed to detect MOSFET control /!\\\n"]);
+	fwrite(stdout, ["This program will not be able to disconnect the battery\n"]);
+	fwrite(stdout, ["You absolutely must disconnect the battery manually when the test is complete\nto avoid damaging the battery\n"]);
+	fwrite(stdout, ["Starting test immediately...\n"]);
+else
+	fwrite(stdout, ["Press any key to start: "]);
 	fflush(stdout);
-	exit(1);
-end
+	kbhit();
+	fwrite(stdout, ["\n"]);
 
-% Wait for voltages to settle
-while (get_voltage(serial_port, v_cc, ADC_BITS) < v_cutoff) end
+	% Send MOSFET enable character and verify transmission
+	if (set_mosfet(serial_port, '+') ~= 0)
+		fwrite(stdout, ["Fatal error: writing to ", SERIAL_DEVICE, " failed, will now exit!\n"]);
+		fflush(stdout);
+		exit(1);
+	end
+
+	% Wait for voltages to settle
+	while (get_voltage(serial_port, v_cc, ADC_BITS) < v_cutoff) end
+end
 
 timer = tic();
 
